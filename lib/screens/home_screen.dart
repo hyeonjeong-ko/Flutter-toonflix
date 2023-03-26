@@ -1,110 +1,76 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'package:toonflix/models/webtoon.dart';
+import 'package:toonflix/services/api_service.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+import '../widgets/webtoon_widget.dart';
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
+class HomeScreen extends StatelessWidget {
+  HomeScreen({super.key});
 
-class _HomeScreenState extends State<HomeScreen> {
-  int totalSeconds = 1500;
-
-  // late ; property를 당장 초기화 하지 않아도 됨을 뜻함
-  late Timer timer;
-
-  void onTick(Timer timer) {
-    setState(() {
-      totalSeconds -= 1;
-    });
-  }
-
-  void onStartPressed() {
-    // Timer ; 정해진 간격에 한번씩 함수를 실행
-    // 매초마다 onTick 실행
-    timer = Timer.periodic(const Duration(seconds: 1), onTick);
-  }
+  final Future<List<WebtoonModel>> webtoons = ApiService.getTodaysToons();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
-      body: Column(
-        children: [
-          // * Flexible은 하드코딩 되는 값을 만들게 해준다.
-          // 하나의 박스가 얼마나 공간을 차지할 지 비율을 정할 수 있다.
-          // UI를 비율에 기반해서 더 유연하게 만들 수 있게 해준다.
-          Flexible(
-            flex: 1,
-            child: Container(
-              // 시계간격 맨위에서 조금아래로
-              alignment: Alignment.bottomCenter,
-              child: Text(
-                '$totalSeconds',
-                style: TextStyle(
-                  color: Theme.of(context).cardColor,
-                  fontSize: 89,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          elevation: 1,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.green,
+          title: const Text(
+            "오늘의 웹툰",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          Flexible(
-            flex: 3,
-            child: Center(
-              child: IconButton(
-                iconSize: 120,
-                color: Theme.of(context).cardColor,
-                onPressed: onStartPressed,
-                icon: const Icon(Icons.play_circle_outline),
-              ),
-            ),
-          ),
-          Flexible(
-            flex: 1,
-            child: Row(
-              children: [
-                // 끝까지 확장
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(50),
-                        topRight: Radius.circular(50),
-                      ),
+          centerTitle: true,
+        ),
+        body: FutureBuilder(
+            future: webtoons,
+            // snapshot을 이용해 future의 상태를 알 수 있음.
+            // widget이 future를 기다림. await할 필요X setState필요X isLoading필요X
+            // Future를 만들고, FutureBuilder에 넣기마 하면 됨
+            // FutureBuilder는 자기가 기다릴 future, builder funct를 받는다
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                // 많은 양의 데이터를 연속적으로 보여주고 싶을때
+                return Column(
+                  children: [
+                    const SizedBox(
+                      height: 50,
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Pomodoros',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                Theme.of(context).textTheme.displayLarge!.color,
-                          ),
-                        ),
-                        Text(
-                          '0',
-                          style: TextStyle(
-                            fontSize: 58,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                Theme.of(context).textTheme.displayLarge!.color,
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+                    // Expanded ; 화면의 남는 공간을 차지하는 Widget
+                    // ListView가 남는 공간을 채운다.
+                    Expanded(child: makeList(snapshot))
+                  ],
+                );
+              }
+              return const Center(
+                // 로딩중...
+                child: CircularProgressIndicator(),
+              );
+            }));
+  }
+
+  ListView makeList(AsyncSnapshot<List<WebtoonModel>> snapshot) {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: snapshot.data!.length,
+      padding: const EdgeInsets.symmetric(
+        vertical: 10,
+        horizontal: 20,
       ),
+      itemBuilder: (context, index) {
+        var webtoon = snapshot.data![index];
+        return Webtoon(
+          title: webtoon.title,
+          thumb: webtoon.thumb,
+          id: webtoon.id,
+        );
+      },
+      // 구분자
+      separatorBuilder: (context, index) => const SizedBox(width: 40),
     );
   }
 }
